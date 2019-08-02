@@ -1,0 +1,7 @@
+The Lua jpeg module provides functions to deal with JPEG image.
+
+The image is stored as lua userdata to allow in memory modifications.
+This module depends on the lua buffer module to create and modify lua userdata.
+See the sample lua files to see the full usages.
+
+Lua jpeg is covered by the MIT license.
