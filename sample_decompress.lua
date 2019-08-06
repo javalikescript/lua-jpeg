@@ -1,4 +1,3 @@
-local bufferLib = require('buffer')
 local jpegLib = require('jpeg')
 
 local function printTable(t, i, p)
@@ -37,16 +36,16 @@ end
 print('image header infos:')
 printTable(info)
 
-jpegLib.decompress(cinfo);
+--jpegLib.configureDecompress(cinfo, {scaleNum = 8, scaleDenom = 8});
+
+jpegLib.startDecompress(cinfo);
 
 info = jpegLib.getInfosDecompress(cinfo);
 
 print('image infos:')
 printTable(info)
 
---jpegLib.configureDecompress(cinfo, {scaleNum = 8, scaleDenom = 8});
-
-local image = bufferLib.new(info.output.components * info.output.width * info.output.height);
+local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height);
 jpegLib.decompress(cinfo, image);
 
 fd:close()

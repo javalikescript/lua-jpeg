@@ -1,4 +1,3 @@
-local bufferLib = require('buffer')
 local jpegLib = require('jpeg')
 
 local cinfo = jpegLib.newDecompress();
@@ -23,33 +22,33 @@ end
 
 jpegLib.configureDecompress(cinfo, {scaleNum = 4, scaleDenom = 8});
 
-jpegLib.decompress(cinfo);
+jpegLib.startDecompress(cinfo);
 
 info = jpegLib.getInfosDecompress(cinfo);
 
-local image = bufferLib.new(info.output.components * info.output.width * info.output.height);
+local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height);
+
 jpegLib.decompress(cinfo, image);
 
 fd:close()
 
 print('image decompressed')
 
--- draw a black X
-for y = 0, info.output.height - 1  do
-    local x = math.floor(y * info.output.width / info.output.height)
-    bufferLib.byteset(image, (y * info.output.width + x) * info.output.components, 0, 0, 0);
-    bufferLib.byteset(image, ((info.output.height - 1 - y) * info.output.width + x) * info.output.components, 0, 0, 0);
-end
-
 local filename = 'tmp_scale.jpg'
 fd = io.open(filename, 'wb')
 
-jpegLib.compress(jpegLib.newCompress(), image, info.output, function(data)
+local cinfo = jpegLib.newCompress()
+
+jpegLib.startCompress(cinfo, info.output, function(data)
     --print('write('..tostring(#data)..')')
     fd:write(data)
-end);
+end)
+
+--jpegLib.writeMarker(cinfo, 0xe1, buffer)
+
+jpegLib.compress(cinfo, image);
 
 fd:close()
 
-print('image compressed in '..filename);
+print('image compressed in '..filename)
 

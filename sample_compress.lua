@@ -19,10 +19,16 @@ end
 local filename = 'tmp.jpg'
 local fd = io.open(filename, 'wb')
 
-jpegLib.compress(jpegLib.newCompress(), image, info, function(data)
+local cinfo = jpegLib.newCompress()
+
+jpegLib.startCompress(cinfo, info, function(data)
     --print('write('..tostring(#data)..')')
     fd:write(data)
-end);
+end)
+
+--jpegLib.writeMarker(cinfo, 0xe1, buffer)
+
+jpegLib.compress(cinfo, image);
 
 fd:close()
 

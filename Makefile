@@ -41,7 +41,7 @@ LIBOPT = $(LIBOPT_$(LIBEXT))
 
 CFLAGS += $(CFLAGS_$(LIBEXT))
 
-SOURCES = jpeg.c
+SOURCES = jpeg.c luamod.h
 
 OBJS = jpeg.o
 
