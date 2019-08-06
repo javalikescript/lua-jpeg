@@ -756,21 +756,21 @@ static int luajpeg_componentMatrix(lua_State *l) {
 		}
 	}
 	int j, x, y, xoffset, yoffset;
-    for (y = 0; y < pi.height; y++) {
-        yoffset = y * pi.bytesPerRow;
-        for (x = 0; x < pi.width; x++) {
-            xoffset = yoffset + x * pi.components;
-        	for (i = 0; i < pi.components; i++) {
-        		work[i] = delta[i];
-            	for (j = 0; j < pi.components; j++) {
-            		work[i] += imageData[xoffset + j] * matrix[i * pi.components + j];
-                }
-            }
-        	for (i = 0; i < pi.components; i++) {
-    			imageData[xoffset + i] = FIX_BYTE(work[i]);
-            }
-        }
-    }
+	for (y = 0; y < pi.height; y++) {
+		yoffset = y * pi.bytesPerRow;
+		for (x = 0; x < pi.width; x++) {
+			xoffset = yoffset + x * pi.components;
+			for (i = 0; i < pi.components; i++) {
+				work[i] = delta[i];
+				for (j = 0; j < pi.components; j++) {
+					work[i] += imageData[xoffset + j] * matrix[i * pi.components + j];
+				}
+			}
+			for (i = 0; i < pi.components; i++) {
+				imageData[xoffset + i] = FIX_BYTE(work[i]);
+			}
+		}
+	}
 
 	return 0;
 }
@@ -810,19 +810,19 @@ static int luajpeg_componentSwap(lua_State *l) {
 			lua_pop(l, 1);
 		}
 	}
-    int x, y, xoffset, yoffset;
-    for (y = 0; y < pi.height; y++) {
-        yoffset = y * pi.bytesPerRow;
-        for (x = 0; x < pi.width; x++) {
-            xoffset = yoffset + x * pi.components;
-        	for (i = 0; i < pi.components; i++) {
+	int x, y, xoffset, yoffset;
+	for (y = 0; y < pi.height; y++) {
+		yoffset = y * pi.bytesPerRow;
+		for (x = 0; x < pi.width; x++) {
+			xoffset = yoffset + x * pi.components;
+			for (i = 0; i < pi.components; i++) {
 				work[i] = imageData[xoffset + indices[i]];
-            }
-        	for (i = 0; i < pi.components; i++) {
-                imageData[xoffset + i] = work[i];
-            }
-        }
-    }
+			}
+			for (i = 0; i < pi.components; i++) {
+				imageData[xoffset + i] = work[i];
+			}
+		}
+	}
 	return 0;
 }
 
@@ -873,11 +873,11 @@ static int luajpeg_convolve(lua_State *l) {
 		kernelY = kernelHeight / 2;
 	}
 
-    int workSize = kernelY + 1;
-    int sizeOfWork = workSize * pi.bytesPerRow * sizeof(unsigned char);
+	int workSize = kernelY + 1;
+	int sizeOfWork = workSize * pi.bytesPerRow * sizeof(unsigned char);
 	int sizeOfKernel = kernelHeight * sizeof(double *) + kernelHeight * kernelWidth * sizeof(double);
 	unsigned char *work = (unsigned char *)bufferData;
-    double **kernel = (double **) (bufferData + sizeOfWork);
+	double **kernel = (double **) (bufferData + sizeOfWork);
 
 	if (bufferLength < sizeOfWork + sizeOfKernel) {
 		lua_pushnil(l);
@@ -886,75 +886,75 @@ static int luajpeg_convolve(lua_State *l) {
 	}
 
 	double kernelSum = 0;
-    int i, j, k;
-    //trace("kernel initialization");
-    for (j = 0; j < kernelHeight; j++) {
-    	kernel[j] = (double *)(((unsigned char *)kernel) + kernelHeight * sizeof(double *) + j * kernelWidth * sizeof(double));
-        for (i = 0; i < kernelWidth; i++) {
+	int i, j, k;
+	//trace("kernel initialization");
+	for (j = 0; j < kernelHeight; j++) {
+		kernel[j] = (double *)(((unsigned char *)kernel) + kernelHeight * sizeof(double *) + j * kernelWidth * sizeof(double));
+		for (i = 0; i < kernelWidth; i++) {
 			if (lua_geti(l, 3, j * kernelWidth + i) == LUA_TNUMBER) {
 				kernelSum += kernel[j][i] = (int) lua_tonumber(l, -1);
 			}
 			lua_pop(l, 1);
-            //trace("kernel[%d][%d] = %f", j, i, kernel[j][i]);
-        }
+			//trace("kernel[%d][%d] = %f", j, i, kernel[j][i]);
+		}
 	}
-    //trace("kernel initialized, sum = %f", kernelSum);
-    unsigned char *pbits = imageData;
-    int x, y;
-    for (y = 0; y < pi.height; y++) {
-        if (y >= workSize) {
-        	int wy = y - workSize;
-        	//trace("starting row %d, flushing row %d [%d]", y, wy, wy % workSize);
-        	memcpy(pbits + wy * pi.bytesPerRow, work + (wy % workSize) * pi.bytesPerRow, pi.bytesPerRow);
-        }
-        for (x = 0; x < pi.width; x++) {
-        	//int debug = (x == info.width / 2) && (y == info.height / 2);
-            for (k = 0; k < pi.components; k++) {
-            	if ((k < componentStart) || (k > componentStop)) {
-            		work[(y % workSize) * pi.bytesPerRow + x * pi.components + k] = pbits[y * pi.bytesPerRow + x * pi.components + k];
-            		continue;
-            	} // else
-            	double sum = 0;
-            	double div = kernelSum;
-            	for (j = 0; j < kernelHeight; j++) {
-            		for (i = 0; i < kernelWidth; i++) {
-            			int kx = x - kernelX + i;
-            			int ky = y - kernelY + j;
-            			if ((kx < 0) || (ky < 0) || (ky >= pi.height) || (kx >= pi.width)) {
-            				div -= kernel[j][i];
-            			} else {
-            				/*if (debug)
-            					trace("%d x %f(kernel[%d][%d]) = %f", pbits[ky * pi.bytesPerRow + kx * pi.components + k],
-            							kernel[j][i], j, i, pbits[ky * pi.bytesPerRow + kx * pi.components + k] * kernel[j][i]);*/
-            				sum += pbits[ky * pi.bytesPerRow + kx * pi.components + k] * kernel[j][i];
-            			}
-            		}
-            	}
-            	int res;
-            	if (div != 0.0) {
-            		res = sum / div;
-            	} else {
-            		res = 255;
-            		//trace("div = %f", div);
-            	}
-            	if (res < 0) {
-            		res = 0;
-            	} else if (res > 255) {
-            		res = 255;
-            	}
-            	work[(y % workSize) * pi.bytesPerRow + x * pi.components + k] = res;
-            	/*if (debug) {
-            		trace("%f / %f = %f => %d", sum, div, sum / div, res);
-            	}*/
-            }
-        }
-    }
-    for (j = 0; j < workSize; j++) {
-    	int wy = y - workSize;
+	//trace("kernel initialized, sum = %f", kernelSum);
+	unsigned char *pbits = imageData;
+	int x, y;
+	for (y = 0; y < pi.height; y++) {
+		if (y >= workSize) {
+			int wy = y - workSize;
+			//trace("starting row %d, flushing row %d [%d]", y, wy, wy % workSize);
+			memcpy(pbits + wy * pi.bytesPerRow, work + (wy % workSize) * pi.bytesPerRow, pi.bytesPerRow);
+		}
+		for (x = 0; x < pi.width; x++) {
+			//int debug = (x == info.width / 2) && (y == info.height / 2);
+			for (k = 0; k < pi.components; k++) {
+				if ((k < componentStart) || (k > componentStop)) {
+					work[(y % workSize) * pi.bytesPerRow + x * pi.components + k] = pbits[y * pi.bytesPerRow + x * pi.components + k];
+					continue;
+				} // else
+				double sum = 0;
+				double div = kernelSum;
+				for (j = 0; j < kernelHeight; j++) {
+					for (i = 0; i < kernelWidth; i++) {
+						int kx = x - kernelX + i;
+						int ky = y - kernelY + j;
+						if ((kx < 0) || (ky < 0) || (ky >= pi.height) || (kx >= pi.width)) {
+							div -= kernel[j][i];
+						} else {
+							/*if (debug)
+								trace("%d x %f(kernel[%d][%d]) = %f", pbits[ky * pi.bytesPerRow + kx * pi.components + k],
+										kernel[j][i], j, i, pbits[ky * pi.bytesPerRow + kx * pi.components + k] * kernel[j][i]);*/
+							sum += pbits[ky * pi.bytesPerRow + kx * pi.components + k] * kernel[j][i];
+						}
+					}
+				}
+				int res;
+				if (div != 0.0) {
+					res = sum / div;
+				} else {
+					res = 255;
+					//trace("div = %f", div);
+				}
+				if (res < 0) {
+					res = 0;
+				} else if (res > 255) {
+					res = 255;
+				}
+				work[(y % workSize) * pi.bytesPerRow + x * pi.components + k] = res;
+				/*if (debug) {
+					trace("%f / %f = %f => %d", sum, div, sum / div, res);
+				}*/
+			}
+		}
+	}
+	for (j = 0; j < workSize; j++) {
+		int wy = y - workSize;
 		//trace("flushing row %d [%d]", wy, wy % workSize);
-    	memcpy(pbits + wy * pi.bytesPerRow, work + (wy % workSize) * pi.bytesPerRow, pi.bytesPerRow);
-    	y++;
-    }
+		memcpy(pbits + wy * pi.bytesPerRow, work + (wy % workSize) * pi.bytesPerRow, pi.bytesPerRow);
+		y++;
+	}
 
 	return 0;
 }
@@ -1004,39 +1004,39 @@ static int luajpeg_rotate(lua_State *l) {
 		return 2;
 	}
 
-    int y, x, b;
-    int xoffset, yoffset, xdoffset, ydoffset;
-    for (y = 0; y < srcInfo.height; y++) {
-    	yoffset = y * srcInfo.bytesPerRow;
-        for (x = 0; x < srcInfo.width; x++) {
-        	xoffset = yoffset + x * srcInfo.components;
-        	switch (rc) {
-        	case 1: // rotate right 90
+	int y, x, b;
+	int xoffset, yoffset, xdoffset, ydoffset;
+	for (y = 0; y < srcInfo.height; y++) {
+		yoffset = y * srcInfo.bytesPerRow;
+		for (x = 0; x < srcInfo.width; x++) {
+			xoffset = yoffset + x * srcInfo.components;
+			switch (rc) {
+			case 1: // rotate right 90
 				ydoffset = x * dstInfo.bytesPerRow;
 				xdoffset = ydoffset + (srcInfo.height - y - 1) * dstInfo.components;
-        		break;
-        	case 2: // rotate 180
+				break;
+			case 2: // rotate 180
 				ydoffset = (srcInfo.height - y - 1) * dstInfo.bytesPerRow;
 				xdoffset = ydoffset + (srcInfo.width - x - 1) * dstInfo.components;
-        		break;
-        	case 3: // rotate left 90
+				break;
+			case 3: // rotate left 90
 				ydoffset = (srcInfo.width - x - 1) * dstInfo.bytesPerRow;
 				xdoffset = ydoffset + y * dstInfo.components;
-        		break;
-        	case 4: // flip horizontal mirror
+				break;
+			case 4: // flip horizontal mirror
 				ydoffset = y * dstInfo.bytesPerRow;
 				xdoffset = ydoffset + (srcInfo.width - x - 1) * dstInfo.components;
-        		break;
-        	case 5: // flip vertical mirror
+				break;
+			case 5: // flip vertical mirror
 				ydoffset = (srcInfo.height - y - 1) * dstInfo.bytesPerRow;
 				xdoffset = ydoffset + x * dstInfo.components;
-        		break;
-        	}
-            for (b = 0; b < srcInfo.components; b++) {
-        		dstImageData[xdoffset + b] = srcImageData[xoffset + b];
-            }
-        }
-    }
+				break;
+			}
+			for (b = 0; b < srcInfo.components; b++) {
+				dstImageData[xdoffset + b] = srcImageData[xoffset + b];
+			}
+		}
+	}
 	return 0;
 }
 
@@ -1071,11 +1071,11 @@ static int luajpeg_subsampleBilinear(lua_State *l) {
 		lua_pushstring(l, "components differ");
 		return 2;
 	}
-    if ((srcInfo.width <= dstInfo.width) || (srcInfo.height <= dstInfo.height)) {
+	if ((srcInfo.width <= dstInfo.width) || (srcInfo.height <= dstInfo.height)) {
 		lua_pushnil(l);
 		lua_pushstring(l, "invalid image sizes for subsampling");
 		return 2;
-    }
+	}
 	size_t minBufferLength = cpr * sizeof(unsigned long) * 2;
 	if (bufferLength < minBufferLength) {
 		lua_pushnil(l);
@@ -1086,87 +1086,87 @@ static int luajpeg_subsampleBilinear(lua_State *l) {
 	unsigned long *work = (unsigned long *)bufferData;
 	unsigned long *divs = work + cpr;
 
-    int i, x, y = 0, xoffset, yoffset;
-    int xd = 0, yd = 0, woffset, xdoffset, ydoffset;
-    int curr, next = 0, nyd = 0, cp, np, yp, ydd, ypass;
-    int xcurr, xnext = 0, nxd = 0, xcp, xnp, xp, xdd, xpass;
-    //while (y < srcInfo.height) {
+	int i, x, y = 0, xoffset, yoffset;
+	int xd = 0, yd = 0, woffset, xdoffset, ydoffset;
+	int curr, next = 0, nyd = 0, cp, np, yp, ydd, ypass;
+	int xcurr, xnext = 0, nxd = 0, xcp, xnp, xp, xdd, xpass;
+	//while (y < srcInfo.height) {
 	for (i = 0; i < cpr; i++) {
 		work[i] = divs[i] = 0;
-    }
-    for (y = 0; y < srcInfo.height; y++) {
-    	yoffset = y * srcInfo.bytesPerRow;
-    	curr = next;
-    	next = (y + 1) * dstInfo.height * 100 / srcInfo.height;
+	}
+	for (y = 0; y < srcInfo.height; y++) {
+		yoffset = y * srcInfo.bytesPerRow;
+		curr = next;
+		next = (y + 1) * dstInfo.height * 100 / srcInfo.height;
 
-        yd = nyd;
-        nyd = next / 100;
+		yd = nyd;
+		nyd = next / 100;
 
-        if ((nyd != yd) && (y + 1 < srcInfo.height)) {
-        	// the destination row is going to change
-        	cp = (100 - (curr % 100)) * 100 / (next - curr);
-        	//np = (next % 100) * 100 / (next - curr);
-        	np = 100 - cp;
-        	ypass = 2;
-        } else {
-        	cp = np = 100;
-        	ypass = 1;
-        }
+		if ((nyd != yd) && (y + 1 < srcInfo.height)) {
+			// the destination row is going to change
+			cp = (100 - (curr % 100)) * 100 / (next - curr);
+			//np = (next % 100) * 100 / (next - curr);
+			np = 100 - cp;
+			ypass = 2;
+		} else {
+			cp = np = 100;
+			ypass = 1;
+		}
 		yp = cp;
 		ydd = yd;
-        while (--ypass >= 0) {
-            ydoffset = ydd * dstInfo.bytesPerRow;
-            //trace("y %d => %d %d%%", y, ydd, yp);
+		while (--ypass >= 0) {
+			ydoffset = ydd * dstInfo.bytesPerRow;
+			//trace("y %d => %d %d%%", y, ydd, yp);
 			xnext = 0;
 			nxd = 0;
-	        for (x = 0; x < srcInfo.width; x++) {
-	        	xoffset = yoffset + x * srcInfo.components;
-	        	xcurr = xnext;
-	        	xnext = (x + 1) * dstInfo.width * 100 / srcInfo.width;
+			for (x = 0; x < srcInfo.width; x++) {
+				xoffset = yoffset + x * srcInfo.components;
+				xcurr = xnext;
+				xnext = (x + 1) * dstInfo.width * 100 / srcInfo.width;
 
-	            xd = nxd;
-	            nxd = xnext / 100;
+				xd = nxd;
+				nxd = xnext / 100;
 
-	            if ((nxd != xd) && (x + 1 < srcInfo.width)) {
-	            	// the destination column is going to change
-	            	xcp = (100 - (xcurr % 100)) * 100 / (xnext - xcurr);
-	            	//np = (next % 100) * 100 / (next - curr);
-	            	xnp = 100 - xcp;
-	            	xpass = 2;
-	            } else {
-	            	xcp = xnp = 100;
-	            	xpass = 1;
-	            }
-	    		xp = xcp;
-	    		xdd = xd;
-	            while (--xpass >= 0) {
-		            woffset = xdd * dstInfo.components;
+				if ((nxd != xd) && (x + 1 < srcInfo.width)) {
+					// the destination column is going to change
+					xcp = (100 - (xcurr % 100)) * 100 / (xnext - xcurr);
+					//np = (next % 100) * 100 / (next - curr);
+					xnp = 100 - xcp;
+					xpass = 2;
+				} else {
+					xcp = xnp = 100;
+					xpass = 1;
+				}
+				xp = xcp;
+				xdd = xd;
+				while (--xpass >= 0) {
+					woffset = xdd * dstInfo.components;
 					int percent = xp * yp / 100;
-	            	//if ((y == 0) || (yp != 100)) jls_info("x %d => %d %d%% (%d%%)", x, xdd, xp, percent);
-            		divs[woffset] += percent;
-	            	for (i = 0; i < srcInfo.components; i++) {
-	            		work[woffset + i] += srcImageData[xoffset + i] * percent / 100;
-	                }
-	    			xp = xnp;
-	    			xdd = nxd;
-	            }
-	        }
-	        if (nyd != ydd) {
-	            for (xd = 0; xd < dstInfo.width; xd++) {
-	            	xdoffset = ydoffset + xd * dstInfo.components;
-	            	woffset = xd * dstInfo.components;
-	            	for (i = 0; i < dstInfo.components; i++) {
-	            		dstImageData[xdoffset + i] = work[woffset + i] * 100 / divs[woffset];
-	            		work[woffset + i] = 0;
-	                }
-	            	divs[woffset] = 0;
-	            }
-	            //trace("row %d completed", yd);
-	        }
+					//if ((y == 0) || (yp != 100)) jls_info("x %d => %d %d%% (%d%%)", x, xdd, xp, percent);
+					divs[woffset] += percent;
+					for (i = 0; i < srcInfo.components; i++) {
+						work[woffset + i] += srcImageData[xoffset + i] * percent / 100;
+					}
+					xp = xnp;
+					xdd = nxd;
+				}
+			}
+			if (nyd != ydd) {
+				for (xd = 0; xd < dstInfo.width; xd++) {
+					xdoffset = ydoffset + xd * dstInfo.components;
+					woffset = xd * dstInfo.components;
+					for (i = 0; i < dstInfo.components; i++) {
+						dstImageData[xdoffset + i] = work[woffset + i] * 100 / divs[woffset];
+						work[woffset + i] = 0;
+					}
+					divs[woffset] = 0;
+				}
+				//trace("row %d completed", yd);
+			}
 			yp = np;
 			ydd = nyd;
-        }
-    }
+		}
+	}
 	return 0;
 }
 
