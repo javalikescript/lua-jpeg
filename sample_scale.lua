@@ -1,6 +1,6 @@
 local jpegLib = require('jpeg')
 
-local cinfo = jpegLib.newDecompress();
+local cinfo = jpegLib.newDecompress()
 
 local filename = 'libjpeg/testimg.jpg'
 
@@ -11,24 +11,24 @@ jpegLib.fillSource(cinfo, function()
     local data = fd:read(2048)
     --print('read '..tostring(#data))
     return data
-end);
+end)
 
-local info, err = jpegLib.readHeader(cinfo);
+local info, err = jpegLib.readHeader(cinfo)
 
 if err or (type(info) ~= 'table') then
     fd:close()
-    error('Cannot read header');
+    error('Cannot read header')
 end
 
-jpegLib.configureDecompress(cinfo, {scaleNum = 4, scaleDenom = 8});
+jpegLib.configureDecompress(cinfo, {scaleNum = 4, scaleDenom = 8})
 
-jpegLib.startDecompress(cinfo);
+jpegLib.startDecompress(cinfo)
 
-info = jpegLib.getInfosDecompress(cinfo);
+info = jpegLib.getInfosDecompress(cinfo)
 
-local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height);
+local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height)
 
-jpegLib.decompress(cinfo, image);
+jpegLib.decompress(cinfo, image)
 
 fd:close()
 
@@ -46,7 +46,7 @@ end)
 
 --jpegLib.writeMarker(cinfo, 0xe1, buffer)
 
-jpegLib.compress(cinfo, image);
+jpegLib.compress(cinfo, image)
 
 fd:close()
 

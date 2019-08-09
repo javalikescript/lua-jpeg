@@ -5,7 +5,7 @@ local function rgbToYuv(imageUserdata, imageInfoTable)
         0.29900, 0.58700, 0.11400,
         -0.16874, -0.33126, 0.50000,
         0.50000, -0.41869, -0.08131
-    }, {0.5, 127.5, 127.5});
+    }, {0.5, 127.5, 127.5})
 end
 
 local function yuvToRgb(imageUserdata, imageInfoTable)
@@ -13,17 +13,47 @@ local function yuvToRgb(imageUserdata, imageInfoTable)
         1, 0, 1.402,
         1, -0.34414, -0.71414,
         1, 1.772, 0
-    }, {-179.456 + 0.5, 44.04992 + 91.40992 - 0.5, -226.816 + 0.5});
+    }, {-179.456 + 0.5, 44.04992 + 91.40992 - 0.5, -226.816 + 0.5})
+end
+
+local function sharpen(imageUserdata, imageInfoTable, sharpFactor)
+    sharpFactor = sharpFactor or 0.1
+    local kernel = {
+        -sharpFactor * 0.707, -sharpFactor, -sharpFactor * 0.707,
+        -sharpFactor, 1 + sharpFactor * 6.828, -sharpFactor,
+        -sharpFactor * 0.707, -sharpFactor, -sharpFactor * 0.707
+    }
+    local buffer = jpegLib.newBuffer(imageInfoTable.components * imageInfoTable.width * 3 + 1024)
+    local options = nil
+    if imageInfoTable.colorSpace == 'YUV' then
+        -- apply on the luma component
+        options = {
+            componentStart = 0,
+            componentStop = 0
+        }
+    end
+    local _, err = jpegLib.convolve(imageUserdata, imageInfoTable, kernel, buffer, options)
+    if err then
+        print('sharpen failed due to '..tostring(err))
+    end
 end
 
 local function rotate(imageUserdata, imageInfoTable, rotateMode)
     local info = {
-        width = imageInfoTable.height,
-        height = imageInfoTable.width,
+        width = imageInfoTable.width,
+        height = imageInfoTable.height,
         components = imageInfoTable.components
-    };
-    local image = jpegLib.newBuffer(info.components * info.width * info.height);
-    local _, err = jpegLib.rotate(imageUserdata, imageInfoTable, image, info, rotateMode or 1);
+    }
+    rotateMode = rotateMode or 1
+    if rotateMode == 1 or rotateMode == 3 then
+        info = {
+            width = imageInfoTable.height,
+            height = imageInfoTable.width,
+            components = imageInfoTable.components
+        }
+    end
+    local image = jpegLib.newBuffer(info.components * info.width * info.height)
+    local _, err = jpegLib.rotate(imageUserdata, imageInfoTable, image, info, rotateMode or 1)
     if err then
         print('rotate failed due to '..tostring(err))
         return imageUserdata, imageInfoTable
@@ -36,10 +66,10 @@ local function subsampleBilinear(imageUserdata, imageInfoTable, dividor)
         width = math.floor(imageInfoTable.width / dividor),
         height = math.floor(imageInfoTable.height / dividor),
         components = imageInfoTable.components
-    };
-    local image = jpegLib.newBuffer(info.components * info.width * info.height);
+    }
+    local image = jpegLib.newBuffer(info.components * info.width * info.height)
     local buffer = jpegLib.newBuffer(imageInfoTable.components * imageInfoTable.width * 2 * 8)
-    local _, err = jpegLib.subsampleBilinear(imageUserdata, imageInfoTable, image, info, buffer);
+    local _, err = jpegLib.subsampleBilinear(imageUserdata, imageInfoTable, image, info, buffer)
     if err then
         print('subsampleBilinear failed due to '..tostring(err))
         return imageUserdata, imageInfoTable
@@ -47,7 +77,7 @@ local function subsampleBilinear(imageUserdata, imageInfoTable, dividor)
     return image, info
 end
 
-local cinfo = jpegLib.newDecompress();
+local cinfo = jpegLib.newDecompress()
 
 local modifications = {
     rotate = true
@@ -75,24 +105,28 @@ jpegLib.fillSource(cinfo, function()
     local data = fd:read(2048)
     --print('read '..tostring(#data))
     return data
-end);
+end)
 
-local info, err = jpegLib.readHeader(cinfo);
+local info, err = jpegLib.readHeader(cinfo)
 if err or (type(info) ~= 'table') then
     fd:close()
-    error('Cannot read header');
+    error('Cannot read header')
+end
+
+if modifications['yuv'] then
+    jpegLib.configureDecompress(cinfo, {colorSpace = 'YUV'})
 end
 
 if modifications['scale'] then
-    jpegLib.configureDecompress(cinfo, {scaleNum = 4, scaleDenom = 8});
+    jpegLib.configureDecompress(cinfo, {scaleNum = 4, scaleDenom = 8})
 end
 
-jpegLib.startDecompress(cinfo);
+jpegLib.startDecompress(cinfo)
 
-info = jpegLib.getInfosDecompress(cinfo);
+info = jpegLib.getInfosDecompress(cinfo)
 
-local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height);
-jpegLib.decompress(cinfo, image);
+local image = jpegLib.newBuffer(info.output.components * info.output.width * info.output.height)
+jpegLib.decompress(cinfo, image)
 
 fd:close()
 
@@ -106,13 +140,19 @@ if modifications['yuv2rgb'] then
     yuvToRgb(image, info.output)
 end
 if modifications['rgb2bgr'] then
-    jpegLib.componentSwap(image, info.output, {2, 1, 0});
+    jpegLib.componentSwap(image, info.output, {2, 1, 0})
 end
 if modifications['rotate'] then
     image, info.output = rotate(image, info.output)
 end
+if modifications['flip'] then
+    image, info.output = rotate(image, info.output, 'flip-horizontal')
+end
 if modifications['subsample'] then
     image, info.output = subsampleBilinear(image, info.output, 2)
+end
+if modifications['sharpen'] then
+    sharpen(image, info.output, 0.5)
 end
 
 local filename = 'tmp_transform.jpg'
@@ -127,7 +167,7 @@ end)
 
 --jpegLib.writeMarker(cinfo, 0xe1, buffer)
 
-jpegLib.compress(cinfo, image);
+jpegLib.compress(cinfo, image)
 
 fd:close()
 

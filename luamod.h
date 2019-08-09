@@ -28,31 +28,45 @@ or
 lua_pushfstring (l, "%s", strerror(errno));
 */
 
-#define RETURN_SUCCESS(LS) lua_pushboolean(l, 1); \
-	return 1;
+#define RETURN_SUCCESS(_LS) lua_pushboolean(_LS, 1); \
+	return 1
 
-#define RETURN_ERROR(LS, MSG) lua_pushnil(LS); \
-	lua_pushstring(LS, MSG); \
-	return 2;
+#define RETURN_ERROR(_LS, _MSG) lua_pushnil(_LS); \
+	lua_pushstring(_LS, _MSG); \
+	return 2
 
-#define SET_TABLE_KEY_STRING(LS, KEY, VALUE) \
-	lua_pushstring(LS, KEY); \
-	lua_pushstring(LS, VALUE); \
-	lua_rawset(LS, -3);
+#define SET_TABLE_KEY_STRING(_LS, _KEY, _VALUE) \
+	lua_pushstring(_LS, _KEY); \
+	lua_pushstring(_LS, _VALUE); \
+	lua_rawset(_LS, -3)
 
-#define SET_TABLE_KEY_INTEGER(LS, KEY, VALUE) \
-	lua_pushstring(LS, KEY); \
-	lua_pushinteger(LS, (lua_Integer) (VALUE)); \
-	lua_rawset(LS, -3);
+#define SET_TABLE_KEY_INTEGER(_LS, _KEY, _VALUE) \
+	lua_pushstring(_LS, _KEY); \
+	lua_pushinteger(_LS, (lua_Integer) (_VALUE)); \
+	lua_rawset(_LS, -3)
 
-#define SET_TABLE_KEY_NUMBER(LS, KEY, VALUE) \
-	lua_pushstring(LS, KEY); \
-	lua_pushnumber(LS, (lua_Number) (VALUE)); \
-	lua_rawset(LS, -3);
+#define SET_TABLE_KEY_NUMBER(_LS, _KEY, _VALUE) \
+	lua_pushstring(_LS, _KEY); \
+	lua_pushnumber(_LS, (lua_Number) (_VALUE)); \
+	lua_rawset(_LS, -3)
 
-#define SET_TABLE_INDEX_STRING(LS, INDEX, VALUE) \
-	lua_pushstring(LS, VALUE); \
-	lua_rawseti(LS, -2, (lua_Integer) (INDEX));
+#define SET_TABLE_INDEX_STRING(_LS, _INDEX, _VALUE) \
+	lua_pushstring(_LS, _VALUE); \
+	lua_rawseti(_LS, -2, (lua_Integer) (_INDEX))
+
+#define SET_OPT_INTEGER_FIELD(_LS, _IDX, _VAR, _NAME) \
+	lua_getfield(_LS, _IDX, _NAME); \
+	if (lua_isinteger(_LS, -1)) { \
+		_VAR = (int) lua_tointeger(_LS, -1); \
+	} \
+	lua_pop(_LS, 1)
+
+#define SET_OPT_NUMBER_FIELD(_LS, _IDX, _VAR, _NAME) \
+	lua_getfield(_LS, _IDX, _NAME); \
+	if (lua_isnumber(_LS, -1)) { \
+		_VAR = (double) lua_tonumber(_LS, -1); \
+	} \
+	lua_pop(_LS, 1)
 
 #define b2s(b) ((b) ? "true" : "false")
 
