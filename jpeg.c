@@ -1269,6 +1269,8 @@ static int luajpeg_buffer_new(lua_State *l) {
 ********************************************************************************
 */
 
+#define LUA_JPEG_VERSION "0.1"
+
 LUALIB_API int luaopen_jpeg(lua_State *l) {
 	trace("luaopen_jpeg()\n");
 
@@ -1310,7 +1312,7 @@ LUALIB_API int luaopen_jpeg(lua_State *l) {
 	luaL_setfuncs(l, reg, 0);
 	lua_pushliteral(l, "Lua jpeg");
 	lua_setfield(l, -2, "_NAME");
-	lua_pushliteral(l, "0.1");
+	lua_pushfstring (l, "%s libjpeg %d.%d", LUA_JPEG_VERSION, JPEG_LIB_VERSION_MAJOR, JPEG_LIB_VERSION_MINOR);
 	lua_setfield(l, -2, "_VERSION");
 	trace("luaopen_jpeg() done\n");
 	return 1;
