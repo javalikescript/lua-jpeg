@@ -1,0 +1,3 @@
+[submodule "libjpeg"]
+	path = libjpeg
+	url = https://github.com/javalikescript/libjpeg.git
