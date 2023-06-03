@@ -1,11 +1,14 @@
 //#define JLS_LUA_MOD_TRACE 1
-#include "luamod.h"
+#include "lua-compat/luamod.h"
 
 #include <jpeglib.h>
 
 #include <math.h>
 #include <string.h>
 
+#if LUA_VERSION_NUM < 503
+#include "lua-compat/compat.h"
+#endif
 
 /*
 The libjpeg supports 8-bit to 12-bit data precision, but this is a compile-time choice, here 8-bit only.

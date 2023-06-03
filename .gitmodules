@@ -1,3 +1,6 @@
 [submodule "libjpeg"]
 	path = libjpeg
 	url = https://github.com/javalikescript/libjpeg.git
+[submodule "lua-compat"]
+	path = lua-compat
+	url = https://github.com/javalikescript/lua-compat.git
